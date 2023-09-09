@@ -22,8 +22,10 @@
 ##
 # Configuration
 SPINFW = '/usr/local/share/spindev.hex'	# set location of cypress firmware
-VID = 0x04b4				# USB vendor ID
-PID = 0x8613				# USB product ID
+VID = 0x04b4  # USB vendor ID for numberz
+PID = 0x8613  # USB product ID for numberz
+VID2 = 0x1879 # USB vendor ID for spin
+PID2 = 0x1001 # USB product ID for spin
 CYPRESSCMD = ['cycfx2prog',
               '-id={0:04X}.{1:04X}'.format(VID,PID),
               'prg:{}'.format(SPINFW),
@@ -46,12 +48,8 @@ if len(sys.argv) != 3:
 # Step 1: Prepare cypress chip for upload
 subprocess.call(CYPRESSCMD)
 
-# Step 2: Read display mem
-PKCMD.append('-GF' + sys.argv[1])
-subprocess.call(PKCMD)
-
-# Step 3: Read the DSP memory
-dev = usb.core.find(idVendor=VID, idProduct=PID)
+# Step 2: Read the DSP memory
+dev = usb.core.find(idVendor=VID2, idProduct=PID2)
 if dev is None:
     raise ValueError('DSP EEPROM Device not found')
 dev.set_configuration()
@@ -69,6 +67,16 @@ ret = dev.ctrl_transfer(0xC0, 0xa9,0,0,4096)
 if len(ret) == 4096:
     with open(sys.argv[2], 'wb') as f:
         f.write(ret)
+    # for i in $(seq 0 7) ; do dd if=halls_dsp.bin of=${i}_halls_dsp.bin bs=512 count=1 skip=$i ; done
+    for i in range(0, 8):
+        out = ret[i*512:(i+1)*512]
+        with open(str(i) + "_" + sys.argv[2], 'wb') as f:
+            f.write(out)
 else:
     raise ValueError('Read error: Invalid memory returned')
+
+# Step 3: Read display mem
+PKCMD.append('-GF' + sys.argv[1])
+subprocess.call(PKCMD)
+
 print('Done.')
